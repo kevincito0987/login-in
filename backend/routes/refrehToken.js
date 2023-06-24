@@ -1,0 +1,33 @@
+const { generateAccessToken } = require("../auth/generateTokens");
+const getTokenFromdHeader = require("../auth/getTokenFromHeader");
+const { verfyAccessToken } = require("../auth/verfyTokens");
+const { jsonResponse } = require("../lib/jsonResponse");
+const Token = require("../schema/token");
+
+const router = require("express").Router();
+
+router.post("/", async (req, res) => {
+    const refreshToken = getTokenFromdHeader(req.headers);
+    res.send("Refresh Token");
+    if (refreshToken) {
+        try {
+            const found = await Token.findOne({ token: refreshToken });
+            if (!found) {
+                return res.status(401).send(jsonResponse(401, {error: "Unauthorized"}));
+            }
+            const payload = verfyAccessToken(found.token);
+            if (payload) {
+                const accessToken = generateAccessToken(payload.user);
+                return res.status(200).json(jsonResponse(200, {accessToken}));
+            } else {
+                return res.status(401).send(jsonResponse(401, {error: "Unauthorized"}));
+            }
+        } catch (error) {
+            return res.status(401).send(jsonResponse(401, {error: "Unauthorized"}));
+        }
+    } else {
+        res.status(401).send(jsonResponse(401, {error: "Unauthorized"}));
+    }
+});
+
+module.exports = router
